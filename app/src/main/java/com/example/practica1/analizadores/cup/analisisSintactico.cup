@@ -1,0 +1,137 @@
+package com.example.practica1.analizadores.cup;
+
+import java_cup.runtime.*;
+import com.example.practica1.domain.*;
+import com.example.practica1.analizadores.flex.AnalizadorLexico;
+import java.util.ArrayList;
+
+parser code {:	// Connect this parser to a scanner!
+
+    public parser(AnalizadorLexico lexico){
+        super(lexico);
+        System.out.println("Se ingreso al analizador sintactico");
+    }
+
+	private Evaluacion evaluacion = new Evaluacion();
+    String[] arregloTexto = new String[0];
+    Double[] arregloEntero = new Double[0];
+    Double[][] arregloUnir = new Double[0][2];
+    Barra iBarra = new Barra();
+
+    private ArrayList<Grafico> listadoGrafico = new ArrayList<>();
+
+    public ArrayList<Grafico> getListado(){
+        return listadoGrafico;
+    }
+    public void setListado(Grafico list){
+        listadoGrafico.add(list);
+    }
+
+    public void report_error(String message, Object info) {
+        System.out.println("public void report_error");
+    }
+    public void report_fatal_error(String message, Object info) {
+        System.out.println("public void report_fatal_error");
+    }
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        if (cur_token.sym == sym.EOF) {
+            System.out.println("public void unrecoveredsyntax_error");
+        }
+    }
+    public void syntax_error(Symbol cur_token) {
+        System.out.println("Error "+cur_token);
+    }
+
+:}
+
+/* Terminals (tokens returned by the scanner). */
+terminal DEF,BARRAS,PIE,TITULO,TIPO,CANTIDAD,PORCENTAJE,EXTRA,EJECUTAR,EJEY,ETIQUETAS,VALORES,UNIR,TOTAL,EJEX;
+terminal LLI,LLF,FIN,COMA,CRF,CRI;
+terminal PLUS, MINUS, TIMES, DIVIDE;
+terminal UMINUS, LPAREN, RPAREN;
+terminal Double NUMBER;
+terminal String TEXT;
+/* Non-terminals */
+
+non terminal inicio;
+non terminal tipoBarra,tipoPie;
+non terminal grafica;
+non terminal estructuraPie;
+non terminal estructuraBarra;
+non terminal arreglo_texto, arreglo_entero, arreglo_unir;
+non terminal ejecutar;
+/*Esto es para evaluar los enteros*/
+non terminal Double expr_list , expr_part;
+non terminal Double expr;
+
+/* Precedences */
+precedence left PLUS, MINUS;
+precedence left TIMES, DIVIDE;
+precedence left UMINUS;
+
+//start with inicio;
+inicio ::=   inicio DEF grafica
+           | inicio ejecutar
+           | ejecutar
+           | DEF grafica ;
+
+grafica ::= BARRAS LLI estructuraBarra LLF {:setListado(new Grafico("Barra",iBarra)); :}
+           /* | PIE LLI estructuraPie LLF {:  :} */;
+
+estructuraBarra ::=estructuraBarra tipoBarra | tipoBarra;
+
+ tipoBarra ::=  TITULO TEXT:obj1 FIN                  {:System.out.println("texto"+obj1); iBarra.setTitulo(obj1); :}
+                | EJEX CRI arreglo_texto CRF FIN  {:System.out.println("sintactico texto"); iBarra.setEjeX(arregloTexto); :}
+                | EJEY CRI arreglo_entero CRF FIN  {:System.out.println("sintactico entero "); iBarra.setEjeY(arregloEntero); :}
+                | UNIR CRI arreglo_unir CRF FIN {: System.out.println("sintactico unir"); iBarra.setUnir(arregloUnir); :} ;
+
+/*
+estructuraPie ::=   tipoPie:t1 tipoPie:t2 tipoPie:t3 tipoPie:t4 tipoPie:t5 tipoPie:t6 tipoPie:t7 {: RESULT = evaluacion.evaluarPie(t1,t2,t3,t4,t5,t6,t7); :}
+                    | tipoPie:tt1 tipoPie:tt2 tipoPie:tt3 tipoPie:tt4 tipoPie:tt5 tipoPie:tt6{: RESULT = evaluacion.evaluarPie(tt1,tt2,tt3,tt4,tt5,tt6); :};
+
+tipoPie ::= TITULO TEXT:ob1 FIN    {: RESULT = ob1; :}
+            | TIPO  CANTIDAD  FIN {:  :}
+            | TIPO PORCENTAJE FIN {:  :}
+            | ETIQUETAS CRI arreglo_texto CRF FIN {: :}
+            | VALORES CRI arreglo_entero CRF FIN {:  :}
+            | TOTAL  expr_list FIN {:  :}
+            | UNIR CRI arreglo_unir CRF FIN {: :}
+            | EXTRA TEXT:ob7 FIN  {: :} ;
+*/
+
+arreglo_texto ::= arreglo_texto COMA TEXT:texto {: Separador.arregloTexto(arregloTexto,texto);:}
+                  | TEXT:texto2 {: Separador.arregloTexto(arregloTexto,texto2);:};
+arreglo_entero ::= arreglo_entero COMA expr_list:entero {: Separador.arregloEntero(arregloEntero,entero); :}
+                   | expr_list:entero2 {: Separador.arregloEntero(arregloEntero,entero2);:};
+arreglo_unir   ::= arreglo_unir COMA LLI expr_list:enteroP COMA expr_list:enteroS LLF {: Separador.arregloUnir(arregloUnir,new Double[]{enteroP,enteroS});:}
+                   | LLI expr_list COMA expr_list LLF;
+
+ejecutar ::= EJECUTAR LPAREN TEXT:ejecuto RPAREN {:  :} ;
+
+expr_list ::= expr_list expr_part
+              | expr_part:ee {: RESULT = ee; :};
+
+expr_part ::= expr:e {: RESULT = e; :};
+
+expr      ::= expr:e1 PLUS expr:e2
+	      {: RESULT = e1 + e2; :}
+
+          | expr:e1 MINUS expr:e2
+          {: RESULT = e1 - e2; :}
+
+          | expr:e1 TIMES expr:e2
+	      {: RESULT = e1 * e2; :}
+
+          | expr:e1 DIVIDE expr:e2
+	      {: RESULT = e1/ e2; :}
+
+          | NUMBER:n
+	      {: RESULT = n; :}
+
+          | MINUS expr:e
+	      {: RESULT = 0 - e; :}
+	      %prec UMINUS
+
+          | LPAREN expr:e RPAREN
+	      {: RESULT = e; :}
+;

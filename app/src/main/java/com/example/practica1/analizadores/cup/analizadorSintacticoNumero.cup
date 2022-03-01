@@ -1,0 +1,81 @@
+
+package com.example.practica1.analizadores.cup;
+
+import java_cup.runtime.*;
+
+import com.example.practica1.analizadores.flex.LexicoNumero;
+
+class OperacionParser;
+
+parser code {:	// Connect this parser to a scanner!
+
+    private Double entero;
+
+    public OperacionParser(LexicoNumero lexer) {
+        super(lexer);
+    }
+    public void setValor(Double valor){
+        this.entero = valor;
+    }
+    public Double getValor(){
+        return entero;
+    }
+
+    public void report_error(String message, Object info) {
+        System.out.println("public void report_error");
+    }
+    public void report_fatal_error(String message, Object info) {
+        System.out.println("public void report_fatal_error");
+    }
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        if (cur_token.sym == OperacionParserSym.EOF) {
+            System.out.println("public void unrecoveredsyntax_error");
+        }
+    }
+    public void syntax_error(Symbol cur_token) {
+        System.out.println("Error "+cur_token);
+    }
+
+:}
+
+/* Terminals (tokens returned by the scanner). */
+terminal           PLUS, MINUS, TIMES, DIVIDE;
+terminal           UMINUS, LPAREN, RPAREN;
+terminal Double   NUMBER;
+
+/* Non-terminals */
+non terminal  expr_list , expr_part;
+non terminal Double    expr;
+
+/* Precedences */
+precedence left PLUS, MINUS;
+precedence left TIMES, DIVIDE;
+precedence left UMINUS;
+
+/* The grammar */
+expr_list ::= expr_list expr_part | expr_part;
+
+expr_part ::= expr:e {: setValor(e); :};
+
+expr      ::= expr:e1 PLUS expr:e2
+	      {: RESULT = e1 + e2; :}
+
+          | expr:e1 MINUS expr:e2
+          {: RESULT = e1 - e2; :}
+
+          | expr:e1 TIMES expr:e2
+	      {: RESULT = e1 * e2; :}
+
+          | expr:e1 DIVIDE expr:e2
+	      {: RESULT = e1/ e2; :}
+
+          | NUMBER:n
+	      {: RESULT = n; :}
+
+          | MINUS expr:e
+	      {: RESULT = 0 - e; :}
+	      %prec UMINUS
+
+          | LPAREN expr:e RPAREN
+	      {: RESULT = e; :}
+;
